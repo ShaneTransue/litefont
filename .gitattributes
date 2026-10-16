@@ -1,0 +1,7 @@
+# Text files are stored with LF line endings; images and documents are binary.
+* text=auto eol=lf
+*.pam binary
+*.pgm binary
+*.ppm binary
+*.png binary
+*.pdf binary
