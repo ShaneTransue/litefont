@@ -1,4 +1,4 @@
-# litefont
+<h1 align="center"><img src="doc/figures/banner.png" alt="litefont" width="760"></h1>
 
 A small font engine in C++20: OpenType fonts in, crisp text out, drawn through plain OpenGL 1.1 or rendered on the CPU.
 
@@ -23,6 +23,7 @@ void display() {
 ## Contents
 
 - [Features](#features)
+- [Output](#output)
 - [Dependencies](#dependencies)
 - [Building](#building)
 - [Using litefont in your project](#using-litefont-in-your-project)
@@ -42,6 +43,21 @@ void display() {
 | **Layout** | Wrapping, alignment, tabs, line and letter spacing, line limits with an ellipsis, superscripts and subscripts, underline and strikethrough, colors and styles per range of text, anchors and quarter-turn rotation for labels. |
 | **Editing** | Caret boxes, selection rectangles, hit tests and caret movement for building text fields. |
 | **Drawing** | Immediate-mode `OpenGLRenderer` (OpenGL 1.1); retained `TextRenderer` over any `GraphicsDevice`; `SoftwareDevice` renders to images on the CPU and matches OpenGL to within one level. |
+
+## Output
+
+The freeglut example. The program draws a triangle with `glBegin`/`glEnd`, and litefont draws the text on top through OpenGL 1.1:
+- a wrapped paragraph
+- superscripts and subscripts, and an underline
+- bold text with an outline and a blurred shadow
+- a name tag following the triangle's corner
+- a rotated axis label
+
+<p align="center"><img src="doc/figures/freeglut.png" alt="The freeglut example" width="820"></p>
+
+The same engine on the CPU (`SoftwareDevice`), at 150 percent scale: hinted small text, kerning, an outlined and shadowed label, a CFF (`.otf`) font and monospaced code.
+
+<p align="center"><img src="doc/figures/samples.png" alt="Text rendered on the CPU" width="611"></p>
 
 ## Dependencies
 
