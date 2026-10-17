@@ -3,12 +3,13 @@
 #include <litefont/Hash.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <string>
 
 namespace litefont {
 
-OpenGLRenderer::OpenGLRenderer() {
+OpenGLRenderer::OpenGLRenderer(OpenGLDevice& device) : device(device) {
 	this->renderer = std::make_unique<TextRenderer>(this->device, this->glyphs, std::uint16_t{1024}, std::uint16_t{8});
 }
 
@@ -31,20 +32,18 @@ void OpenGLRenderer::drawText(const FontFamily& family, FontStyle style, float s
 		made.setColor(color);
 		entry = &this->find(key, made);
 	}
-	entry->text.setOffset(Vector2f{x, y});
-	this->renderer->drawNow(entry->handle, this->scale);
+	this->drawEntry(*entry, Vector2f{x, y});
 }
 
 void OpenGLRenderer::draw(const Text& text, float x, float y) {
 	OpenGLCachedText& entry = this->find(OpenGLRenderer::getKey(text), text);
-	entry.text.setOffset(text.getPosition() + text.getOffset() + Vector2f{x, y});
-	if (text.isClipped()) {
+	if (text.isClipped() && this->device.getSpace() == OpenGLSpace::Viewport) {
 		entry.text.setClip(text.getClip());
 	}
 	else {
 		entry.text.clearClip();
 	}
-	this->renderer->drawNow(entry.handle, this->scale);
+	this->drawEntry(entry, text.getPosition() + text.getOffset() + Vector2f{x, y});
 }
 
 Rectf OpenGLRenderer::measureText(const Font& font, float size, std::string_view text) const {
@@ -131,6 +130,37 @@ TextRenderer& OpenGLRenderer::getTextRenderer() {
 	return *this->renderer;
 }
 
+float OpenGLRenderer::getRasterScale(float pixelScale, float size) {
+	// Sixths of an octave, so glyphs are never drawn more than 6 percent
+	// larger or smaller than rendered; no glyph is rendered over 256 pixels,
+	// which an atlas page always holds, and larger text is magnified.
+	if (!(pixelScale > 0.0f) || !std::isfinite(pixelScale)) {
+		return 1.0f;
+	}
+	const float steps = std::round(std::log2(pixelScale) * 6.0f);
+	const float stepped = std::exp2(steps / 6.0f);
+	const float largest = 256.0f / std::max(size, 1e-6f);
+	return std::max(std::min(stepped, largest), 1e-6f);
+}
+
+void OpenGLRenderer::drawEntry(OpenGLCachedText& entry, Vector2f origin) {
+	if (this->device.getSpace() == OpenGLSpace::Viewport) {
+		// Pixels: laid out once at the screen's scale, moved by whole device pixels.
+		entry.text.setOffset(origin);
+		this->device.setPlacement(Affine2f::identity());
+		this->renderer->drawNow(entry.handle, this->scale);
+		return;
+	}
+	// Under a matrix: laid out and rendered at about the size it shows, then
+	// scaled back to the matrix's units and moved to the origin there, with y
+	// turned over when y is up so the text still reads top to bottom.
+	const float rasterScale = OpenGLRenderer::getRasterScale(this->device.getPixelScale(origin), entry.text.getSize());
+	const float unit = 1.0f / rasterScale;
+	entry.text.setOffset(Vector2f{});
+	this->device.setPlacement(Affine2f::scale(unit, this->device.isYUp() ? -unit : unit).then(Affine2f::translate(origin.x, origin.y)));
+	this->renderer->drawNow(entry.handle, rasterScale);
+}
+
 OpenGLCachedText& OpenGLRenderer::find(std::uint64_t key, const Text& text) {
 	const auto found = this->index.find(key);
 	if (found != this->index.end()) {
@@ -176,6 +206,13 @@ std::uint64_t OpenGLRenderer::getKey(const Text& text) {
 		hash = OpenGLRenderer::mixValue(hash, run.firstByte);
 		hash = OpenGLRenderer::mixValue(hash, run.byteCount);
 		hash = OpenGLRenderer::mixValue(hash, run.color.packRGBA8());
+	}
+	hash = OpenGLRenderer::mixValue(hash, text.hasGradient());
+	if (text.hasGradient()) {
+		const TextGradient& gradient = text.getGradient();
+		for (const Color4f& corner : {gradient.topLeft, gradient.topRight, gradient.bottomLeft, gradient.bottomRight}) {
+			hash = OpenGLRenderer::mixValue(hash, corner.packRGBA8());
+		}
 	}
 	hash = OpenGLRenderer::mixValue(hash, text.getOutline().width);
 	hash = OpenGLRenderer::mixValue(hash, text.getOutline().color.packRGBA8());

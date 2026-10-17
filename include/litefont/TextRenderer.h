@@ -83,7 +83,10 @@ struct TextEntry {
  * bins a glyph is rendered shifted by half or quarter pixels instead, which
  * spaces fractional advances more truly at the cost of more atlas entries.
  * Glyph colors come from the Text's color runs per vertex, so syntax colors
- * cost no atlas space; where runs overlap, the one starting later wins.
+ * cost no atlas space; where runs overlap, the one starting later wins. A
+ * Text's gradient gives each corner of a glyph, underline or strikethrough
+ * quad the gradient's color at that point of the laid-out box, and the
+ * device blends the corners, so gradients cost no atlas space either.
  * Each glyph comes from the face its style resolved to, simulated where the
  * family lacks a face. A Text with an outline adds a grown copy of each
  * glyph in the outline color, and one with a shadow adds an offset copy (of
@@ -143,6 +146,7 @@ private:
 	void appendQuads(const TextEntry& entry, TextLayer layer, std::uint16_t page, Geometry<SpriteVertex>& target) const;
 
 	static void rotate(std::span<SpriteVertex> vertices, Vector2f pivot, TextRotation rotation);
+	static void shade(std::span<SpriteVertex> vertices, const TextGradient& gradient, const Rectf& box);
 	static std::uint64_t getSolidKey();
 
 	GraphicsDevice& device;

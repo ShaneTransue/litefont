@@ -31,35 +31,44 @@ struct OpenGLCachedText {
  * \class OpenGLRenderer OpenGLRenderer.h <litefont/OpenGLRenderer.h>
  * @addtogroup Text
  *
- * OpenGLRenderer - Text in an OpenGL program in three steps: declare it,
+ * OpenGLRenderer - Text in an OpenGL program in three steps: declare it with
+ * the device for the program's context (OpenGL11Device or OpenGL33Device),
  * load a Font once, and call drawText() wherever the program draws. It needs
- * nothing at construction, makes its OpenGL objects at the first draw (with
- * the context current), and draws next to glBegin and glEnd code; the
- * OpenGLDevice it draws through says which state it touches and restores.
+ * no context at construction and makes its OpenGL objects at the first draw
+ * (with the context current); the device says which state it touches and
+ * restores. The device is not owned and must outlive the renderer.
  *
  * drawText() is immediate: every call draws right away, in call order with
  * whatever else the program draws. Behind it, each distinct string with its
  * font, size, style and color keeps a laid-out Text and its glyphs in the
  * atlas, so drawing it again, anywhere, costs no layout and no glyph
- * rendering: the position only moves its quads, by whole device pixels.
- * When more strings than the cache capacity (1024 by default) are kept, the
- * least recently drawn one goes. draw() does the same for a Text with every
- * setting of its own (style runs, wrapping, outlines, shadows, rotation and
- * the rest), placed at its position and offset plus the point given; the
- * renderer draws its own copy, so the Text may change or go at any time.
+ * rendering: the position only moves its quads. When more strings than the
+ * cache capacity (1024 by default) are kept, the least recently drawn one
+ * goes. draw() does the same for a Text with every setting of its own
+ * (style runs, wrapping, outlines, shadows, rotation and the rest), placed
+ * at its position and offset plus the point given; the renderer draws its
+ * own copy, so the Text may change or go at any time.
  *
- * Positions are in pixels at 100 percent scale from the top-left corner of
- * the viewport; setScale() sets the device pixels per pixel (the ratio of a
- * high-density screen). measureText() gives the box a string takes and
- * needs no context. Fonts are not owned and must outlive the strings drawn
- * with them, or call clearCache() first. Change the hinting before the
- * first draw: glyphs already in the atlas keep the setting they were
- * rendered with. Call release() with the context current to delete the
- * OpenGL textures; the destructor cannot, since the context may be gone.
+ * By default positions are pixels at 100 percent scale from the top-left
+ * corner of the viewport, moved by whole device pixels, and setScale() sets
+ * the device pixels per pixel (the ratio of a high-density screen). When the
+ * device draws through a matrix (OpenGLDevice::setMatrix, or
+ * OpenGL11Device::useMatrixStack), positions and sizes are in the matrix's
+ * units instead, and setScale() and clips do not apply: each Text is laid out
+ * and rendered at the size it shows on screen, rounded to a sixth of an
+ * octave (getRasterScale), and the matrix carries it the rest of the way, so
+ * moving, turning or zooming it costs no layout until the size crosses a
+ * step. measureText() gives the box a string takes and needs no context.
+ *
+ * Fonts are not owned and must outlive the strings drawn with them, or call
+ * clearCache() first. Change the hinting before the first draw: glyphs
+ * already in the atlas keep the setting they were rendered with. Call
+ * release() with the context current to delete the OpenGL objects; the
+ * destructor cannot, since the context may be gone.
  */
 class OpenGLRenderer {
 public:
-	OpenGLRenderer();
+	explicit OpenGLRenderer(OpenGLDevice& device);
 	OpenGLRenderer(const OpenGLRenderer&) = delete;
 	OpenGLRenderer& operator=(const OpenGLRenderer&) = delete;
 
@@ -85,8 +94,11 @@ public:
 	OpenGLDevice& getDevice();
 	TextRenderer& getTextRenderer();
 
+	static float getRasterScale(float pixelScale, float size);
+
 private:
 	OpenGLCachedText& find(std::uint64_t key, const Text& text);
+	void drawEntry(OpenGLCachedText& entry, Vector2f origin);
 
 	static std::uint64_t getKey(const Text& text);
 	static std::uint64_t getKey(const FontFamily& family, FontStyle style, float size, const Color4f& color, std::string_view text);
@@ -96,7 +108,7 @@ private:
 	template <typename T>
 	static std::uint64_t mixValue(std::uint64_t hash, const T& value);
 
-	OpenGLDevice device;
+	OpenGLDevice& device;
 	GlyphRasterizer glyphs;
 	std::unique_ptr<TextRenderer> renderer;
 	std::list<OpenGLCachedText> cache;

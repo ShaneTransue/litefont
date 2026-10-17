@@ -174,6 +174,52 @@ class TextRendererTests {
 		context.check(right, "per-glyph colors");
 	}};
 
+	static inline test::Test gradients{"TextRenderer: a gradient colors each corner by where it sits in the box, and color runs still win", [](test::Context& context) {
+		const Color4f red{1.0f, 0.0f, 0.0f, 1.0f};
+		const Color4f green{0.0f, 1.0f, 0.0f, 1.0f};
+		const Color4f blue{0.0f, 0.0f, 1.0f, 1.0f};
+		const Color4f white{1.0f, 1.0f, 1.0f, 1.0f};
+		const TextGradient corners{red, green, blue, white};
+		context.check(corners.getColor(0.0f, 0.0f) == red && corners.getColor(1.0f, 0.0f) == green, "top corners");
+		context.check(corners.getColor(0.0f, 1.0f) == blue && corners.getColor(1.0f, 1.0f) == white, "bottom corners");
+		context.check(corners.getColor(0.5f, 0.5f) == Color4f{0.5f, 0.5f, 0.5f, 1.0f}, "the middle blends all four");
+		context.check(TextGradient::vertical(red, blue) == TextGradient{red, red, blue, blue}, "vertical");
+
+		Font font;
+		font.load(BlockFont::build());
+		GlyphRasterizer glyphs;
+		test::RecordingDevice device;
+		TextRenderer renderer(device, glyphs);
+		Text text("abab", font, 12.0f);
+		text.setColor(white);
+		const std::uint32_t revision = text.getRevision();
+		const TextGradient sideways = TextGradient::horizontal(red, blue);
+		text.setGradient(sideways);
+		text.setGradient(sideways);
+		context.check(text.hasGradient() && text.getRevision() == revision + 1, "setting a gradient changes the revision once");
+		text.setColorRuns({TextColorRun{2, 1, green}});
+		const TextHandle handle = renderer.add(text);
+		renderer.update(1.0f);
+
+		const Rectf box = renderer.getLayout(handle)->getBounds();
+		const std::span<const SpriteVertex> vertices = renderer.getGeometry().getVertices();
+		bool right = vertices.size() == 16;
+		for (std::size_t i = 0; right && i < vertices.size(); i++) {
+			const Color4f expected = i / 4 == 2 ? green : sideways.getColor((vertices[i].x - box.x) / box.width, 0.0f);
+			right = vertices[i].rgba == expected.packRGBA8();
+		}
+		context.check(right, "corner colors");
+		context.check(vertices.size() == 16 && vertices[0].rgba != vertices[1].rgba, "the color changes across a glyph");
+
+		text.clearGradient();
+		renderer.update(1.0f);
+		bool plain = renderer.getGeometry().getVertices().size() == 16;
+		for (std::size_t i = 0; plain && i < 16; i++) {
+			plain = renderer.getGeometry().getVertices()[i].rgba == (i / 4 == 2 ? green : white).packRGBA8();
+		}
+		context.check(plain, "cleared, the Text's color again");
+	}};
+
 	static inline test::Test removes{"TextRenderer: remove drops a Text's quads and its handle is reused", [](test::Context& context) {
 		Font font;
 		font.load(BlockFont::build());

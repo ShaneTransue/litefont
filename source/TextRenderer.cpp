@@ -168,6 +168,9 @@ void TextRenderer::rebuild(TextEntry& entry) {
 		const bool outlined = outlineWidth16 > 0.0f && outline.color.a > 0.0f;
 		const bool shadowed = shadow.color.a > 0.0f;
 		const Vector2f shadowOffset{std::round(shadow.offset.x * this->deviceScale), std::round(shadow.offset.y * this->deviceScale)};
+		// A gradient spans the laid-out box, before any rotation, so it turns with the Text.
+		const bool shaded = text.hasGradient();
+		const Rectf shadedBox = entry.layout.getBounds();
 
 		if (background.color.a > 0.0f) {
 			const Rectf bounds = entry.layout.getBounds();
@@ -231,17 +234,27 @@ void TextRenderer::rebuild(TextEntry& entry) {
 				run++;
 			}
 			std::uint32_t rgba = color;
+			bool inRun = false;
 			if (run < runs.size() && runs[run].firstByte <= placed.byteOffset && placed.byteOffset - runs[run].firstByte < runs[run].byteCount) {
 				rgba = runs[run].color.packRGBA8();
+				inRun = true;
 			}
 
+			const std::size_t firstVertex = entry.vertices.size();
 			this->addQuad(entry, *found, whole, placed.pen.y, rgba, TextLayer::Fill, pageMask);
+			if (shaded && !inRun) {
+				TextRenderer::shade(std::span<SpriteVertex>(entry.vertices).subspan(firstVertex), text.getGradient(), shadedBox);
+			}
 		}
 
 		for (const TextDecoration& decoration : entry.layout.getDecorations()) {
 			const std::int32_t colorRun = TextLayout::findColorRun(runs, decoration.byteOffset);
 			const std::uint32_t rgba = colorRun >= 0 ? runs[static_cast<std::size_t>(colorRun)].color.packRGBA8() : color;
+			const std::size_t firstVertex = entry.vertices.size();
 			this->addSolid(entry, decoration.rect, rgba, TextLayer::Fill, pageMask);
+			if (shaded && colorRun < 0) {
+				TextRenderer::shade(std::span<SpriteVertex>(entry.vertices).subspan(firstVertex), text.getGradient(), shadedBox);
+			}
 		}
 
 		// A quarter turn about the position, which is a whole device pixel.
@@ -449,6 +462,16 @@ void TextRenderer::rotate(std::span<SpriteVertex> vertices, Vector2f pivot, Text
 			vertex.x = pivot.x + dy;
 			vertex.y = pivot.y - dx;
 		}
+	}
+}
+
+void TextRenderer::shade(std::span<SpriteVertex> vertices, const TextGradient& gradient, const Rectf& box) {
+	// Each corner takes the gradient's color where it sits in the box; the
+	// device blends the corner colors across the quad.
+	for (SpriteVertex& vertex : vertices) {
+		const float u = box.width > 0.0f ? (vertex.x - box.x) / box.width : 0.0f;
+		const float v = box.height > 0.0f ? (vertex.y - box.y) / box.height : 0.0f;
+		vertex.rgba = gradient.getColor(u, v).packRGBA8();
 	}
 }
 

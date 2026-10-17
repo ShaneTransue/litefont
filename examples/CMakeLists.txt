@@ -1,5 +1,6 @@
 # Two examples: rasterize renders text to an image file on the CPU, and the
-# freeglut example draws text in an old-style OpenGL program. The second one
+# freeglut example draws text in an old-style OpenGL program (or, with --core,
+# in an OpenGL 3.3 core profile context). The second one
 # is built only when GLUT is found (freeglut through vcpkg, a system package
 # or a framework).
 

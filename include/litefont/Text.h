@@ -134,6 +134,30 @@ struct TextBackground {
 };
 
 /**
+ * \struct TextGradient Text.h <litefont/Text.h>
+ * @addtogroup Text
+ *
+ * TextGradient - A color for each corner of a Text's laid-out box, blended
+ * across it. getColor() gives the blend at a point of the box, from (0, 0)
+ * at the top-left corner to (1, 1) at the bottom-right: the top and bottom
+ * edges blend left to right, and the result blends top to bottom.
+ * vertical() and horizontal() make the two-color gradients; four different
+ * corners blend both ways at once.
+ */
+struct TextGradient {
+	Color4f topLeft;
+	Color4f topRight;
+	Color4f bottomLeft;
+	Color4f bottomRight;
+
+	Color4f getColor(float u, float v) const;
+	bool operator==(const TextGradient&) const = default;
+
+	static TextGradient vertical(const Color4f& top, const Color4f& bottom);
+	static TextGradient horizontal(const Color4f& left, const Color4f& right);
+};
+
+/**
  * \class Text Text.h <litefont/Text.h>
  * @addtogroup Text
  *
@@ -150,6 +174,11 @@ struct TextBackground {
  * whose other styles are then simulated. The style and style runs choose a
  * face per byte range, and the outline and shadow decorate every glyph. The
  * fonts are not owned and must outlive the Text.
+ *
+ * A gradient (setGradient) colors the glyphs, underlines and strikethroughs
+ * by where they sit in the laid-out box, in place of the Text's color; color
+ * runs still color their own ranges, and outlines, shadows and the
+ * background keep their colors. clearGradient() goes back to one color.
  *
  * The anchor is the point of the laid-out box that lands on the position,
  * from (0, 0), the top-left corner (the default), to (1, 1), the
@@ -191,6 +220,10 @@ public:
 	Color4f getColor() const;
 	void setColorRuns(std::vector<TextColorRun> colorRuns);
 	const std::vector<TextColorRun>& getColorRuns() const;
+	void setGradient(const TextGradient& gradient);
+	void clearGradient();
+	const TextGradient& getGradient() const;
+	bool hasGradient() const;
 	void setOutline(const TextOutline& outline);
 	const TextOutline& getOutline() const;
 	void setShadow(const TextShadow& shadow);
@@ -241,6 +274,8 @@ private:
 	Vector2f position;
 	Color4f color;
 	std::vector<TextColorRun> colorRuns;
+	TextGradient gradient;
+	bool shaded = false;
 	TextOutline outline;
 	TextShadow shadow;
 	float maxWidth = 0.0f;

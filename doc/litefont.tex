@@ -42,12 +42,12 @@
 
 \section{Overview}
 
-litefont turns OpenType fonts into crisp text. It reads the font file itself, renders hinted glyph images with exact antialiasing, lays out paragraphs and labels, and draws them through plain OpenGL~1.1 or into an image on the CPU. It is written in C++20, depends only on the standard library and the system's OpenGL, and needs no extension loader.
+litefont turns OpenType fonts into crisp text. It reads the font file itself, renders hinted glyph images with exact antialiasing, lays out paragraphs and labels, and draws them through OpenGL (1.1 fixed function or a 3.3 core profile) or into an image on the CPU. It is written in C++20, depends only on the standard library and the system's OpenGL, and needs no extension loader: it finds the OpenGL functions it uses by itself.
 
 \begin{itemize}
 	\item \textbf{Fonts:} TrueType and CFF (\texttt{.otf}) outlines, collections (\texttt{.ttc}), kerning from GPOS or the kern table, names and traits; damaged files fail cleanly.
 	\item \textbf{Families:} regular, bold, italic and bold italic faces, simulated when missing; fallback families for missing code points; a catalog that finds families by name in a folder.
-	\item \textbf{Glyphs:} exact-area coverage with vertical hinting; outlines, sharp and blurred shadows, all cached in a texture atlas.
+	\item \textbf{Glyphs:} exact-area coverage with vertical hinting; outlines, sharp and blurred shadows, all cached in a texture atlas; gradients with a color in each corner.
 	\item \textbf{Layout:} wrapping, alignment, tabs, letter spacing, line limits with an ellipsis, superscripts and subscripts, underline and strikethrough, per-range colors and styles, anchors and quarter-turn rotation.
 	\item \textbf{Editing queries:} caret boxes, selection rectangles, hit tests and caret movement.
 \end{itemize}
@@ -60,13 +60,14 @@ litefont turns OpenType fonts into crisp text. It reads the font file itself, re
 
 \section{Quick start}
 
-A program declares a font and a renderer, loads the font once, and draws wherever it already draws. The renderer needs no OpenGL context until its first draw.
+A program declares a font, a device for its kind of OpenGL context and a renderer, loads the font once, and draws wherever it already draws. Neither the device nor the renderer needs an OpenGL context until the first draw.
 
 \begin{lstlisting}
 #include <litefont/litefont.h>
 
 litefont::Font font;                       // (1) declare
-litefont::OpenGLRenderer renderer;
+litefont::OpenGL11Device device;           // or OpenGL33Device
+litefont::OpenGLRenderer renderer(device);
 
 void init() {
 	font.load("DejaVuSans.ttf");           // (2) load once
@@ -104,7 +105,7 @@ Positions are pixels from the top-left corner of the viewport. \texttt{measureTe
 \end{tikzpicture}
 \end{center}
 
-A \textbf{Font} owns its file's bytes and answers questions about them: metrics, the glyph for a code point, advances, kerning and outlines. \textbf{TextLayout} places the glyphs of a \textbf{Text} (its content, family, size, colors and layout settings) on whole-pixel baselines. The \textbf{GlyphRasterizer} renders each glyph at its size, hinted so baselines and x-heights land on whole pixels, and the \textbf{SpriteAtlas} keeps the images in texture pages. The \textbf{TextRenderer} turns placed glyphs into quads and hands them to a \textbf{GraphicsDevice}: \textbf{OpenGLDevice} on the GPU or \textbf{SoftwareDevice} on the CPU, which use the same blending and give the same pixels to within one level.
+A \textbf{Font} owns its file's bytes and answers questions about them: metrics, the glyph for a code point, advances, kerning and outlines. \textbf{TextLayout} places the glyphs of a \textbf{Text} (its content, family, size, colors and layout settings) on whole-pixel baselines. The \textbf{GlyphRasterizer} renders each glyph at its size, hinted so baselines and x-heights land on whole pixels, and the \textbf{SpriteAtlas} keeps the images in texture pages. The \textbf{TextRenderer} turns placed glyphs into quads and hands them to a \textbf{GraphicsDevice}: an \textbf{OpenGLDevice} (OpenGL11Device or OpenGL33Device) on the GPU or \textbf{SoftwareDevice} on the CPU, which use the same blending and give the same pixels to within one level.
 
 A Text is laid out once and kept. Drawing it again, or moving it, costs no layout and no glyph rendering; only a change to how it looks starts over.
 
@@ -112,13 +113,28 @@ A Text is laid out once and kept. Drawing it again, or moving it, costs no layou
 
 \texttt{OpenGLRenderer} is the immediate-mode front end. Each \texttt{drawText} call draws at once, in call order with the program's own drawing. Behind it, every distinct string with its font, size, style and color keeps its layout and glyphs, so a string drawn every frame, even at a new position, costs a lookup and moving its quads. The least recently drawn strings are dropped once the cache holds more than 1024. \texttt{draw(text, x, y)} does the same for a Text with all its own settings.
 
-The renderer draws through OpenGL 1.1 alone: the fixed-function calls every desktop OpenGL library exports directly, so it runs in any compatibility context, next to \texttt{glBegin} and \texttt{glEnd}, without a loader. Glyph pages are alpha textures, modulated by the vertex color and blended with straight alpha. For each draw it sets what text needs:
+The renderer draws through the device the program picked for its context:
 \begin{itemize}
-	\item an orthographic projection over the viewport;
-	\item blending, texturing, the client arrays, and the scissor for clips;
-	\item depth test, lighting and face culling switched off.
+	\item \texttt{OpenGL11Device} uses only OpenGL 1.1 fixed function, so it runs in any compatibility context, next to \texttt{glBegin} and \texttt{glEnd}. Glyph pages are alpha textures, modulated by the vertex color and blended with straight alpha. It saves and restores the program's state with \texttt{glPushAttrib}, \texttt{glPushClientAttrib} and the matrix stacks.
+	\item \texttt{OpenGL33Device} runs in 3.3 or newer contexts, core profiles included. It draws with one small shader from a vertex array and buffers; glyph pages are one-channel textures read as alpha, so it blends exactly as the 1.1 device does. Core profiles have no attribute stack, so it reads each value it changes and sets it back afterwards.
 \end{itemize}
-Before drawing it saves the program's state, and afterwards it restores it, with \texttt{glPushAttrib}, \texttt{glPushClientAttrib} and the matrix stacks. \texttt{setRestoreState(false)} skips this for programs that manage their own state. The renderer makes its textures at the first draw; \texttt{release()} deletes them while the context is current.
+For each draw a device sets what text needs (a projection, blending, the atlas texture, the scissor for clips) and switches off depth test and face culling. \texttt{setRestoreState(false)} skips saving and restoring for programs that manage their own state.
+
+Neither device includes an OpenGL header or needs a loader. Each finds its functions at the first draw through a table of them (\texttt{OpenGL11Functions}, \texttt{OpenGL33Functions}); \texttt{OpenGLFunctions.cpp} is the only file that knows the operating system, and looks functions up with \texttt{wglGetProcAddress} on Windows, in the OpenGL framework on macOS, and through EGL or GLX on Linux. Textures, buffers and the shader are made at the first draw too; \texttt{release()} deletes them while the context is current, and \texttt{getError()} says why a device drew nothing.
+
+\subsection*{Text in the program's own transform}
+
+By default text sits on the pixel grid of the viewport. To draw it in the program's own coordinates instead, such as a zoomable 2D view, a turning label or a point in a 3D scene, the program tells the device: \texttt{setMatrix(m)} takes a column-major matrix (projection times model-view, as a shader would), and on \texttt{OpenGL11Device}, \texttt{useMatrixStack()} draws through whatever the program set with \texttt{glOrtho}, \texttt{glRotatef} and the rest. \texttt{useViewport()} goes back to pixels.
+
+\begin{lstlisting}
+glMatrixMode(GL_MODELVIEW);
+glRotatef(degrees, 0.0f, 0.0f, 1.0f);
+device.useMatrixStack();
+renderer.draw(label);
+device.useViewport();
+\end{lstlisting}
+
+Positions and sizes are then in the program's units, and text grows downward from its position; y is up by default, and \texttt{setYUp(false)} serves a y-down space. Each string is rendered at about the size it covers on screen, in steps of a sixth of an octave, and the matrix carries it the rest of the way with linear filtering, so text stays sharp at any zoom, and moving, turning or zooming it costs no new layout until its size crosses a step.
 
 \section{Texts and labels}
 
@@ -133,6 +149,7 @@ Setting & Effect \\
 content, family, size & UTF-8 text, the faces it uses, its size in pixels \\
 style, style runs & a face per range of bytes, superscript or subscript, underline, strikethrough \\
 color, color runs & a color per range of bytes, such as syntax colors \\
+gradient & a color for each corner of the box, blended across the glyphs \\
 outline, shadow & a border around each glyph; an offset shadow, optionally blurred \\
 background & a box behind the text, grown by padding \\
 max width, align, line spacing, tab width & paragraph layout \\
@@ -156,6 +173,6 @@ litefont builds with CMake 3.20 or newer and any C++20 compiler.
 cmake -S . -B build
 cmake --build build --config Release
 \end{lstlisting}
-\texttt{LITEFONT\_BUILD\_EXAMPLES} adds the freeglut example and a command-line renderer, \texttt{LITEFONT\_BUILD\_TESTS} the test suite, and \texttt{LITEFONT\_OPENGL} can turn the OpenGL renderer off for CPU-only use. A project adds litefont with \texttt{add\_subdirectory}, or installs it and uses \texttt{find\_package(litefont)}; either way it links \texttt{litefont::litefont}.
+\texttt{LITEFONT\_BUILD\_EXAMPLES} adds the freeglut example and a command-line renderer, \texttt{LITEFONT\_BUILD\_TESTS} the test suite, and \texttt{LITEFONT\_OPENGL} can turn the OpenGL renderers off for CPU-only use. A project adds litefont with \texttt{add\_subdirectory}, or installs it and uses \texttt{find\_package(litefont)}; either way it links \texttt{litefont::litefont}.
 
 \end{document}

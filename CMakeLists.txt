@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(litefont VERSION 1.0.0 DESCRIPTION "A small font engine with an OpenGL 1.1 renderer" LANGUAGES CXX)
+project(litefont VERSION 1.0.0 DESCRIPTION "A small font engine with OpenGL 1.1 and 3.3 renderers" LANGUAGES CXX)
 include(GNUInstallDirs)
 
 # Built on its own, litefont also builds its tests; added to another project
@@ -10,7 +10,7 @@ else()
 	set(LITEFONT_TOP_LEVEL OFF)
 endif()
 
-option(LITEFONT_OPENGL "Build the OpenGL 1.1 renderer (links the system OpenGL library)" ON)
+option(LITEFONT_OPENGL "Build the OpenGL renderers (links the system OpenGL library)" ON)
 option(LITEFONT_BUILD_TESTS "Build the tests" ${LITEFONT_TOP_LEVEL})
 option(LITEFONT_BUILD_EXAMPLES "Build the examples (the freeglut example needs GLUT)" OFF)
 option(LITEFONT_INSTALL "Generate the install rules" ${LITEFONT_TOP_LEVEL})
@@ -50,7 +50,8 @@ set(LITEFONT_SOURCES
 	source/TextRenderer.cpp
 	source/Utf8.cpp)
 if(LITEFONT_OPENGL)
-	list(APPEND LITEFONT_SOURCES source/OpenGLDevice.cpp source/OpenGLRenderer.cpp)
+	list(APPEND LITEFONT_SOURCES source/OpenGLFunctions.cpp source/OpenGLDevice.cpp source/OpenGL11Device.cpp
+		source/OpenGL33Device.cpp source/OpenGLRenderer.cpp)
 endif()
 
 add_library(litefont ${LITEFONT_SOURCES})
@@ -96,13 +97,9 @@ endif()
 
 if(LITEFONT_OPENGL)
 	find_package(OpenGL REQUIRED)
-	target_link_libraries(litefont PRIVATE OpenGL::GL)
-	if(WIN32)
-		set_source_files_properties(source/OpenGLDevice.cpp PROPERTIES COMPILE_DEFINITIONS "WIN32_LEAN_AND_MEAN;NOMINMAX")
-	endif()
-	if(APPLE)
-		set_source_files_properties(source/OpenGLDevice.cpp PROPERTIES COMPILE_DEFINITIONS "GL_SILENCE_DEPRECATION")
-	endif()
+	# OpenGL functions are found at run time (source/OpenGLFunctions.cpp), so
+	# no OpenGL header is compiled; dlsym needs libdl where it is separate.
+	target_link_libraries(litefont PRIVATE OpenGL::GL ${CMAKE_DL_LIBS})
 endif()
 
 if(LITEFONT_BUILD_TESTS)

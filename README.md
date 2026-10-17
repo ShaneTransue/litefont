@@ -1,17 +1,18 @@
 <h1 align="center"><img src="doc/figures/banner.png" alt="litefont" width="760"></h1>
 
-A small font engine in C++20: OpenType fonts in, crisp text out, drawn through plain OpenGL 1.1 or rendered on the CPU.
+A small font engine in C++20: OpenType fonts in, crisp text out, drawn through OpenGL (1.1 fixed function or a 3.3 core profile) or rendered on the CPU.
 
-No third-party libraries, no shaders, no extension loader. Load a font once and call `drawText` wherever your program already draws, next to `glBegin`/`glEnd` if you like.
+No third-party libraries and no extension loader: litefont finds the few OpenGL functions it needs by itself. Load a font once and call `drawText` wherever your program already draws, next to `glBegin`/`glEnd` or your own shaders.
 
 ```cpp
 #include <litefont/litefont.h>
 
-litefont::Font font;                  // 1. declare
-litefont::OpenGLRenderer renderer;
+litefont::Font font;                          // 1. declare
+litefont::OpenGL11Device device;              //    or OpenGL33Device in a 3.3 core context
+litefont::OpenGLRenderer renderer(device);
 
 void init() {
-	font.load("DejaVuSans.ttf");      // 2. load once
+	font.load("DejaVuSans.ttf");              // 2. load once
 }
 
 void display() {
@@ -39,19 +40,24 @@ void display() {
 |---|---|
 | **Fonts** | TrueType and CFF (`.otf`) outlines, collections (`.ttc`, `.otc`), cmap formats 4 and 12, kerning from GPOS or the `kern` table, names and traits. Every read is bounds-checked, so damaged files fail cleanly. |
 | **Families** | Regular, bold, italic and bold italic faces, with bold and italic simulated when a face is missing; fallback families for characters a font lacks; a catalog that finds families by name in a folder you choose. |
-| **Glyphs** | Exact-area antialiasing with vertical hinting, so small text has solid baselines and x-heights; outlines, sharp and blurred shadows; all cached in a texture atlas. |
+| **Glyphs** | Exact-area antialiasing with vertical hinting, so small text has solid baselines and x-heights; outlines, sharp and blurred shadows; all cached in a texture atlas. Gradients with a color in each corner of the text, blended by the GPU at no atlas cost. |
 | **Layout** | Wrapping, alignment, tabs, line and letter spacing, line limits with an ellipsis, superscripts and subscripts, underline and strikethrough, colors and styles per range of text, anchors and quarter-turn rotation for labels. |
 | **Editing** | Caret boxes, selection rectangles, hit tests and caret movement for building text fields. |
-| **Drawing** | Immediate-mode `OpenGLRenderer` (OpenGL 1.1); retained `TextRenderer` over any `GraphicsDevice`; `SoftwareDevice` renders to images on the CPU and matches OpenGL to within one level. |
+| **Drawing** | Immediate-mode `OpenGLRenderer` over `OpenGL11Device` (fixed function, any compatibility context) or `OpenGL33Device` (one shader, core profiles); text on pixels, or in your own transform (your matrix, or the OpenGL matrix stack) re-rendered at the size it shows; retained `TextRenderer` over any `GraphicsDevice`; `SoftwareDevice` renders to images on the CPU and matches OpenGL to within one level. |
 
 ## Output
 
 The freeglut example. The program draws a triangle with `glBegin`/`glEnd`, and litefont draws the text on top through OpenGL 1.1:
-- a wrapped paragraph
-- superscripts and subscripts, and an underline
-- bold text with an outline and a blurred shadow
-- a name tag following the triangle's corner
-- a rotated axis label
+- a title shaded pink at the top to light blue at the bottom
+- a wrapped paragraph about the library
+- a feature list with a color per range, an underline and a strikethrough
+- equations with superscripts and subscripts, each in its own color
+- bold text with an outline, a blurred shadow and a different color in each corner
+- the code that draws it, in a monospaced font with syntax colors, on a background box
+- a label held to two lines and cut with an ellipsis
+- a name tag following the triangle's corner, and a rotated axis label
+
+Run with `--core`, the same text is drawn in an OpenGL 3.3 core profile context through `OpenGL33Device`.
 
 <p align="center"><img src="doc/figures/freeglut.png" alt="The freeglut example" width="820"></p>
 
@@ -65,13 +71,13 @@ The same engine on the CPU (`SoftwareDevice`), at 150 percent scale: hinted smal
 |---|---|---|
 | A C++20 compiler with `<format>` | everything | Visual Studio 2022 17.2 or newer, GCC 13 or newer, Clang 17 or newer |
 | [CMake](https://cmake.org) 3.20 or newer | building | |
-| OpenGL (comes with the system) | `OpenGLRenderer` | turn off with `-DLITEFONT_OPENGL=OFF` for CPU-only use |
+| OpenGL (comes with the system) | `OpenGLRenderer` and the OpenGL devices | turn off with `-DLITEFONT_OPENGL=OFF` for CPU-only use |
 | [freeglut](https://freeglut.sourceforge.net) | the freeglut example only | through vcpkg, your package manager or Homebrew (on macOS it needs XQuartz) |
 | Python 3 and [fontTools](https://github.com/fonttools/fonttools) | the optional reference tool only | `tools/oracle` |
 
-The library itself uses only the C++ standard library and the system's OpenGL. Its OpenGL calls are all version 1.1, which every desktop OpenGL library exports directly, so there is no GLEW, GLAD or other loader to set up.
+The library itself uses only the C++ standard library and the system's OpenGL. It includes no OpenGL header and needs no GLEW, GLAD or other loader: `source/OpenGLFunctions.cpp`, the only file that knows the operating system, finds each function at run time (`wglGetProcAddress` on Windows, the OpenGL framework on macOS, EGL or GLX on Linux).
 
-So far litefont has been built and tested with Visual Studio 2026 on Windows. The code is portable C++20, and the CMake setup covers GCC and Clang on Linux and macOS, but those builds have not been tried yet.
+So far litefont has been built and tested with Visual Studio 2026 on Windows, in OpenGL 1.1 (compatibility) and 3.3 core contexts. The code is portable C++20, and the CMake setup covers GCC and Clang on Linux and macOS, but those builds, and the Linux and macOS function lookup, have not been tried yet.
 
 ## Building
 
@@ -112,7 +118,7 @@ cmake --build build
 
 | Option | Default | Effect |
 |---|---|---|
-| `LITEFONT_OPENGL` | `ON` | build `OpenGLRenderer` and link OpenGL |
+| `LITEFONT_OPENGL` | `ON` | build `OpenGLRenderer` and the OpenGL devices, and link OpenGL |
 | `LITEFONT_BUILD_TESTS` | `ON` when built on its own | build `litefont_tests` |
 | `LITEFONT_BUILD_EXAMPLES` | `OFF` | build the examples (the freeglut one is built only when GLUT is found) |
 | `LITEFONT_TEST_FONTS` | empty | a folder of real fonts for the tests that need them |
@@ -163,8 +169,16 @@ Everything is in the `litefont` namespace, and `<litefont/litefont.h>` includes 
 
 ### Drawing with OpenGL
 
+Pick the device that matches your context once, where you declare it; the renderer works the same over either:
+
+| Device | Context | Draws with |
+|---|---|---|
+| `OpenGL11Device` | any compatibility context (the default in freeglut, GLFW, SDL and Qt) | fixed function and client arrays, next to `glBegin`/`glEnd` |
+| `OpenGL33Device` | a 3.3 or newer context, core or compatibility | one small shader, a vertex array and buffers |
+
 ```cpp
-litefont::OpenGLRenderer renderer;
+litefont::OpenGL33Device device;
+litefont::OpenGLRenderer renderer(device);
 
 renderer.drawText(font, 24.0f, "Score: 120", 10.0f, 10.0f, litefont::Color4f{1.0f, 0.8f, 0.2f, 1.0f});
 const litefont::Rectf box = renderer.measureText(font, 24.0f, "Centered");
@@ -173,10 +187,31 @@ renderer.drawText(font, 24.0f, "Centered", (width - box.width) / 2.0f, 100.0f);
 
 - **Immediate:** every call draws at once, in order with your own drawing.
 - **Cached:** each distinct string (font, size, style, color) keeps its layout and glyphs, so redrawing it costs no layout or glyph rendering, even when it moves every frame. The least recently drawn strings go once more than 1024 are kept (`setCacheCapacity`).
-- **Coordinates:** pixels from the top-left corner of the current viewport. Call `setScale(ratio)` on high-density screens.
-- **OpenGL state:** each draw saves your state and restores it afterwards (`glPushAttrib`, `glPushClientAttrib` and the matrix stacks). `setRestoreState(false)` skips that if you manage state yourself.
-- **Context:** the renderer creates its textures at the first draw, so it can be declared before the context exists. Call `release()` with the context current to delete them.
-- **Profiles:** it needs a compatibility-profile context, which is the default for freeglut, GLFW, SDL and Qt. Core-profile contexts are not supported yet.
+- **Coordinates:** pixels from the top-left corner of the current viewport, by default. Call `setScale(ratio)` on high-density screens.
+- **OpenGL state:** each draw saves your state and restores it afterwards: `OpenGL11Device` with `glPushAttrib`, `glPushClientAttrib` and the matrix stacks; `OpenGL33Device` by reading each value it changes and setting it back. `setRestoreState(false)` skips that if you manage state yourself.
+- **Context:** the device finds its OpenGL functions and creates its textures at the first draw, so both can be declared before the context exists. Call `release()` with the context current to delete them. `device.getError()` says why nothing was drawn (a missing function, or a shader that failed).
+
+### Drawing in your own transform
+
+By default text sits on the pixel grid. To draw it in your own coordinates instead (a zoomable 2D view, a rotating label, a point in a 3D scene), tell the device:
+
+```cpp
+// OpenGL 1.1: whatever you set on the matrix stack
+glMatrixMode(GL_PROJECTION); glLoadIdentity(); glOrtho(-w / 2, w / 2, -h / 2, h / 2, -1, 1);
+glMatrixMode(GL_MODELVIEW);  glLoadIdentity(); glRotatef(degrees, 0, 0, 1);
+device.useMatrixStack();
+renderer.draw(label);
+device.useViewport();
+
+// any device, including core profiles: a matrix (column-major, projection times model-view)
+device.setMatrix(projection * view * model);
+renderer.drawText(font, 0.5f, "A", x, y);   // a size of half a unit
+device.useViewport();
+```
+
+- **Units:** positions and sizes are in your units, and text grows downward from its position. Y is up by default, as with `glOrtho(0, w, 0, h)` or world coordinates; call `device.setYUp(false)` for a y-down space.
+- **Sharp at any zoom:** each string is rendered at about the size it covers on screen (in steps of a sixth of an octave), and your matrix carries it the rest of the way with linear filtering. Moving, turning or zooming it costs no new layout until the size crosses a step.
+- **Clips** and `setScale` apply to the pixel grid only.
 
 ### Styled text and labels
 
@@ -192,6 +227,7 @@ label.setStyleRuns({
 	litefont::TextStyleRun{12, 4, litefont::FontStyle::Bold}});
 label.setOutline(litefont::TextOutline{1.0f, litefont::Color4f{0.0f, 0.0f, 0.0f, 1.0f}});
 label.setShadow(litefont::TextShadow{litefont::Vector2f{2.0f, 2.0f}, litefont::Color4f{0.0f, 0.0f, 0.0f, 0.6f}, 3.0f});
+label.setGradient(litefont::TextGradient::vertical(pink, lightBlue));   // or a color for each corner
 
 litefont::Text axis("Stress (MPa)", family, 14.0f);
 axis.setRotation(litefont::TextRotation::CounterClockwise);
@@ -202,6 +238,8 @@ renderer.draw(axis, 30.0f, 300.0f);
 ```
 
 Other settings include wrap width, alignment, line and letter spacing, line limits with an ellipsis, colors per range, underline, strikethrough and a background box.
+
+A gradient gives each corner of the text's box a color (`TextGradient{topLeft, topRight, bottomLeft, bottomRight}`, or `vertical` and `horizontal` for two). Glyphs, underlines and strikethroughs take the blend where they sit; color runs keep their own colors, and outlines, shadows and backgrounds keep theirs.
 
 ### Rendering on the CPU
 
@@ -235,8 +273,9 @@ Build with `-DLITEFONT_BUILD_EXAMPLES=ON`. No fonts ship with litefont; pass any
 
 | Example | Run |
 |---|---|
-| `examples/freeglut`: a triangle drawn with `glBegin`, text on top, and a label that follows a moving point | `litefont_freeglut <font.ttf>` |
-| the same, comparing one OpenGL frame against the CPU renderer | `litefont_freeglut <font.ttf> --self-check` |
+| `examples/freeglut`: a triangle drawn with `glBegin`, text on top, and a label that follows a moving point; the code sample uses the second font, a monospaced one, when given | `litefont_freeglut <font.ttf> [mono.ttf]` |
+| the same text in an OpenGL 3.3 core profile context, through `OpenGL33Device` | `litefont_freeglut <font.ttf> --core` |
+| comparing OpenGL against the CPU renderer in every space the device has (pixels, matrices with y down and up, the matrix stack), and checking that drawing leaves the OpenGL state as it was | `litefont_freeglut <font.ttf> --self-check` (add `--core` for the 3.3 device) |
 | `examples/rasterize`: text to an image file on the CPU | `litefont_rasterize <font.ttf> "Hello" 16 hello.ppm --theme light` |
 
 `litefont_rasterize` also takes `--scale`, `--width`, `--align`, `--style`, `--outline`, `--shadow` and `--pixel-advances`.

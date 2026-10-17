@@ -114,6 +114,50 @@ const std::vector<TextColorRun>& Text::getColorRuns() const {
 	return this->colorRuns;
 }
 
+void Text::setGradient(const TextGradient& gradient) {
+	if (this->shaded && this->gradient == gradient) {
+		return;
+	}
+	this->gradient = gradient;
+	this->shaded = true;
+	this->revision++;
+}
+
+void Text::clearGradient() {
+	if (!this->shaded) {
+		return;
+	}
+	this->gradient = TextGradient{};
+	this->shaded = false;
+	this->revision++;
+}
+
+const TextGradient& Text::getGradient() const {
+	return this->gradient;
+}
+
+bool Text::hasGradient() const {
+	return this->shaded;
+}
+
+Color4f TextGradient::getColor(float u, float v) const {
+	// Along the top and bottom edges first, then between them.
+	const float x = std::clamp(u, 0.0f, 1.0f);
+	const float y = std::clamp(v, 0.0f, 1.0f);
+	auto mix = [](const Color4f& a, const Color4f& b, float t) {
+		return Color4f{a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t};
+	};
+	return mix(mix(this->topLeft, this->topRight, x), mix(this->bottomLeft, this->bottomRight, x), y);
+}
+
+TextGradient TextGradient::vertical(const Color4f& top, const Color4f& bottom) {
+	return TextGradient{top, top, bottom, bottom};
+}
+
+TextGradient TextGradient::horizontal(const Color4f& left, const Color4f& right) {
+	return TextGradient{left, right, left, right};
+}
+
 void Text::setOutline(const TextOutline& outline) {
 	this->change(this->outline, outline);
 }
