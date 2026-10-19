@@ -204,7 +204,7 @@ litefont builds with CMake 3.20 or newer and any C++20 compiler; with CMake 3.21
 cmake --preset default
 cmake --build --preset release
 \end{lstlisting}
-That builds the library, its tests and the examples in \texttt{build/} (programs in \texttt{build/bin}, libraries in \texttt{build/lib}) and assembles \texttt{build/bin\_release}: \texttt{examples/} holds the example programs, ready to start with a double-click, with their DLLs and the open-source Noto fonts they ship with, and \texttt{sdk/} holds \texttt{include/} and \texttt{lib/} with the library and its CMake package. The \texttt{vcpkg} preset takes packages such as freeglut from \texttt{VCPKG\_ROOT}, and the \texttt{asan} preset builds with AddressSanitizer in \texttt{build-asan/}.
+That builds the library and the examples in \texttt{build/} (programs in \texttt{build/bin}, libraries in \texttt{build/lib}) and assembles \texttt{build/bin\_release}: \texttt{examples/} holds the example programs, ready to start with a double-click, with their DLLs and the open-source Noto fonts they ship with, and \texttt{sdk/} holds \texttt{include/} and \texttt{lib/} with the library and its CMake package. The \texttt{vcpkg} preset takes packages such as freeglut from \texttt{VCPKG\_ROOT}, and the \texttt{asan} preset builds with AddressSanitizer in \texttt{build-asan/}.
 
 \texttt{LITEFONT\_OPENGL} and \texttt{LITEFONT\_D3D11} turn the GPU devices off; with both off, litefont depends on the C++ standard library alone. A project adds litefont with \texttt{add\_subdirectory}, or uses the SDK (or an install) with \texttt{find\_package(litefont)}; either way it links \texttt{litefont::litefont}.
 

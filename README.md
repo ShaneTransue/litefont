@@ -30,7 +30,6 @@ void display() {
 - [Using litefont in your project](#using-litefont-in-your-project)
 - [Usage](#usage)
 - [Examples](#examples)
-- [Tests](#tests)
 - [Project layout](#project-layout)
 - [License](#license)
 
@@ -75,11 +74,10 @@ The same engine on the CPU (`SoftwareDevice`), at 150 percent scale: hinted smal
 | OpenGL (comes with the system) | the OpenGL devices | turn off with `-DLITEFONT_OPENGL=OFF` |
 | Direct3D 11 (comes with the Windows SDK) | `D3D11Device`, Windows only | turn off with `-DLITEFONT_D3D11=OFF` |
 | [freeglut](https://freeglut.sourceforge.net) | the freeglut example only | through vcpkg, your package manager or Homebrew (on macOS it needs XQuartz) |
-| Python 3 and [fontTools](https://github.com/fonttools/fonttools) | the optional reference tool only | `tools/oracle` |
 
 The core of litefont (fonts, layout, glyphs, `TextPainter`, `TextRenderer` and the CPU device) uses only the C++ standard library; with both GPU devices turned off it depends on nothing else. The devices stay out of each other's way:
 - **OpenGL:** no OpenGL header and no GLEW, GLAD or other loader. `source/OpenGLFunctions.cpp`, the only file that knows the operating system, finds each function at run time (`wglGetProcAddress` on Windows, the OpenGL framework on macOS, EGL or GLX on Linux).
-- **Direct3D 11:** your program hands over its `ID3D11Device` and context, and litefont calls through them, so it links no Direct3D library. Its shaders are compiled ahead of time and built in (`tools/shaders` regenerates them with `fxc`). Its header only declares the Direct3D interfaces, so including litefont never pulls in Windows headers.
+- **Direct3D 11:** your program hands over its `ID3D11Device` and context, and litefont calls through them, so it links no Direct3D library. Its shaders are compiled ahead of time with `fxc` and built in (`source/D3D11Shaders.h`, which also shows their HLSL source). Its header only declares the Direct3D interfaces, so including litefont never pulls in Windows headers.
 
 So far litefont has been built and tested with Visual Studio 2026 on Windows: OpenGL 1.1 (compatibility), OpenGL 3.3 core, Direct3D 11 and the CPU. The code is portable C++20, and the CMake setup covers GCC and Clang on Linux and macOS, but those builds, and the Linux and macOS OpenGL function lookup, have not been tried yet.
 
@@ -92,7 +90,7 @@ cmake --preset default
 cmake --build --preset release
 ```
 
-That builds the library, its tests and the examples in Release (CMake 3.21 or newer for presets), and assembles a ready-to-use folder:
+That builds the library and the examples in Release (CMake 3.21 or newer for presets), and assembles a ready-to-use folder:
 
 ```
 build/bin_release/
@@ -108,7 +106,7 @@ The examples in `bin_release/examples` start with a double-click: given no fonts
 | `vcpkg` | the same, with packages (freeglut) from the vcpkg in `VCPKG_ROOT` |
 | `asan` | an AddressSanitizer build in `build-asan/` |
 
-Build presets: `release` (everything, then `bin_release`), `debug`, `vcpkg-release` and `asan`; test preset: `release`. For settings of your own, such as a vcpkg path, put presets in a `CMakeUserPresets.json`, which git ignores.
+Build presets: `release` (everything, then `bin_release`), `debug`, `vcpkg-release` and `asan`. For settings of your own, such as a vcpkg path, put presets in a `CMakeUserPresets.json`, which git ignores.
 
 Without presets, the usual commands work too; the `dist` target assembles `bin_<config>`:
 
@@ -150,9 +148,7 @@ cmake --build --preset release
 |---|---|---|
 | `LITEFONT_OPENGL` | `ON` | build the OpenGL devices and link OpenGL |
 | `LITEFONT_D3D11` | `ON` on Windows | build the Direct3D 11 device |
-| `LITEFONT_BUILD_TESTS` | `ON` when built on its own | build `litefont_tests` |
 | `LITEFONT_BUILD_EXAMPLES` | `OFF` | build the examples (the freeglut one only when GLUT is found, the Direct3D 11 one only on Windows) |
-| `LITEFONT_TEST_FONTS` | empty | a folder of real fonts for the tests that need them |
 | `LITEFONT_EXAMPLE_FONTS` | `examples/fonts` | the fonts copied next to the windowed examples (and into `bin_release`) as `fonts/`, so they run without arguments |
 | `LITEFONT_INSTALL` | `ON` when built on its own | install rules and a CMake package |
 | `LITEFONT_WARNINGS_AS_ERRORS` | `OFF` | treat compiler warnings as errors |
@@ -193,7 +189,7 @@ find_package(litefont REQUIRED)
 target_link_libraries(app PRIVATE litefont::litefont)
 ```
 
-When litefont is added to another project, only the library is built; its tests and examples stay off unless you turn them on.
+When litefont is added to another project, only the library is built; its examples stay off unless you turn them on.
 
 ## Usage
 
@@ -315,31 +311,14 @@ The presets build the examples (`LITEFONT_BUILD_EXAMPLES`). Pass any `.ttf`, `.o
 
 `litefont_rasterize` also takes `--scale`, `--width`, `--align`, `--style`, `--outline`, `--shadow` and `--pixel-advances`.
 
-## Tests
-
-```sh
-ctest --preset release
-```
-
-The tests build their own small fonts byte by byte, so they need no font files, and they compare rendered images with the golden images in `tests/golden`. The drawing spaces and the painter are tested on the CPU device, so they need no GPU. Tests that check real fonts run when given a folder of them:
-
-```sh
-cmake -S . -B build -DLITEFONT_TEST_FONTS=<folder of fonts>
-```
-
-or `litefont_tests --fonts <folder>`. `tools/oracle/dump_font.py` writes fontTools reference dumps into `out/reference`. The tests then compare every outline, metric, character mapping and kerning pair against them.
-
 ## Project layout
 
 ```
 include/litefont/    public headers (litefont.h includes the usual ones)
 source/              implementation
-tests/               test suite and golden images
 examples/            freeglut, Direct3D 11 and command-line examples (shared/ holds their common scene,
                      fonts/ the open-source fonts they ship with)
 doc/                 a short PDF guide (litefont.pdf) and its LaTeX source
-tools/oracle/        fontTools reference dumps for the tests (optional)
-tools/shaders/       the Direct3D 11 shader source and the script that builds it in
 cmake/               package configuration template
 CMakePresets.json    the build presets
 ```

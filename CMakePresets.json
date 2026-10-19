@@ -9,7 +9,7 @@
 		{
 			"name": "default",
 			"displayName": "Default",
-			"description": "The library, tests and examples in build/ (the freeglut example only when GLUT is found)",
+			"description": "The library and examples in build/ (the freeglut examples only when GLUT is found)",
 			"binaryDir": "${sourceDir}/build",
 			"cacheVariables": {
 				"LITEFONT_BUILD_EXAMPLES": "ON"
@@ -28,7 +28,7 @@
 			"name": "asan",
 			"inherits": "default",
 			"displayName": "AddressSanitizer",
-			"description": "The library, tests and examples built with AddressSanitizer, in build-asan/",
+			"description": "The library and examples built with AddressSanitizer, in build-asan/",
 			"binaryDir": "${sourceDir}/build-asan",
 			"cacheVariables": {
 				"LITEFONT_SANITIZE": "ON"
@@ -63,24 +63,6 @@
 			"displayName": "AddressSanitizer",
 			"configurePreset": "asan",
 			"configuration": "Release"
-		}
-	],
-	"testPresets": [
-		{
-			"name": "release",
-			"configurePreset": "default",
-			"configuration": "Release",
-			"output": {
-				"outputOnFailure": true
-			}
-		},
-		{
-			"name": "vcpkg-release",
-			"configurePreset": "vcpkg",
-			"configuration": "Release",
-			"output": {
-				"outputOnFailure": true
-			}
 		}
 	]
 }

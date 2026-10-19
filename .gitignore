@@ -2,4 +2,5 @@ build/
 build-*/
 out/
 CMakeUserPresets.json
-tools/banner/
+tests/
+tools/
