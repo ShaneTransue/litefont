@@ -42,6 +42,7 @@ public:
 	void drawSprites(GeometryHandle geometry, std::span<const SpriteBatch> batches) override;
 	void endFrame() override;
 	Image readPixels() const override;
+	Recti getViewport() const override;
 
 	const DeviceCallCounts& getCounts() const;
 	void resetCounts();

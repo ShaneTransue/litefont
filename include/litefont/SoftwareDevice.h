@@ -49,6 +49,12 @@ struct SoftwareVertex {
  * contraction is off in the build, so frames are byte-identical across
  * compilers. Distance-field batches arrive with MSDF (F7) and are skipped
  * until then.
+ *
+ * The viewport is the whole frame. Under a matrix (setMatrix) vertices go
+ * through it and the perspective divide to frame pixels, and attributes are
+ * interpolated across the screen; for 2D matrices that is exactly what a
+ * GPU does, and under perspective a GPU's interpolation differs slightly.
+ * release() frees the textures and geometry.
  */
 class SoftwareDevice : public GraphicsDevice {
 public:
@@ -61,6 +67,8 @@ public:
 	void drawSprites(GeometryHandle geometry, std::span<const SpriteBatch> batches) override;
 	void endFrame() override;
 	Image readPixels() const override;
+	Recti getViewport() const override;
+	void release() override;
 
 private:
 	void drawTriangle(const std::array<SoftwareVertex, 3>& corners, const Image& texture, const Recti& clip);

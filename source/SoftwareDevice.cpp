@@ -45,6 +45,31 @@ void SoftwareDevice::drawSprites(GeometryHandle geometry, std::span<const Sprite
 		return;
 	}
 	const SoftwareGeometry& source = this->geometries[geometry.value - 1];
+	// On the pixel grid positions are pixels already (after the placement,
+	// usually none); under a matrix they go to clip space and then to pixels.
+	const Recti viewport = this->getViewport();
+	const bool onPixels = this->space != SpriteSpace::Matrix;
+	const bool placed = !this->placement.isIdentity();
+	const Matrix4f transform = this->getSpriteTransform(viewport);
+	auto locate = [&](SoftwareVertex& vertex) {
+		if (onPixels) {
+			if (placed) {
+				vertex.position = this->placement.apply(vertex.position);
+			}
+			return true;
+		}
+		const std::array<float, 16>& m = transform.values;
+		const float x = vertex.position.x;
+		const float y = vertex.position.y;
+		const float w = m[3] * x + m[7] * y + m[15];
+		if (!(w > 1e-9f)) {
+			return false;
+		}
+		const float clipX = (m[0] * x + m[4] * y + m[12]) / w;
+		const float clipY = (m[1] * x + m[5] * y + m[13]) / w;
+		vertex.position = Vector2f{(clipX + 1.0f) * 0.5f * static_cast<float>(viewport.width), (1.0f - clipY) * 0.5f * static_cast<float>(viewport.height)};
+		return true;
+	};
 	for (const SpriteBatch& batch : batches) {
 		if (batch.encoding != SpriteEncoding::Coverage || batch.texture.value == 0 || batch.texture.value > this->textures.size()) {
 			continue;
@@ -56,7 +81,7 @@ void SoftwareDevice::drawSprites(GeometryHandle geometry, std::span<const Sprite
 			std::array<SoftwareVertex, 3> corners;
 			bool good = true;
 			for (std::size_t corner = 0; corner < 3; corner++) {
-				good = good && SoftwareDevice::readVertex(source, source.indices[static_cast<std::size_t>(i) + corner], corners[corner]);
+				good = good && SoftwareDevice::readVertex(source, source.indices[static_cast<std::size_t>(i) + corner], corners[corner]) && locate(corners[corner]);
 			}
 			if (good) {
 				this->drawTriangle(corners, texture, clip);
@@ -70,6 +95,15 @@ void SoftwareDevice::endFrame() {
 
 Image SoftwareDevice::readPixels() const {
 	return this->frame;
+}
+
+Recti SoftwareDevice::getViewport() const {
+	return this->frame.getBounds();
+}
+
+void SoftwareDevice::release() {
+	this->textures.clear();
+	this->geometries.clear();
 }
 
 void SoftwareDevice::drawTriangle(const std::array<SoftwareVertex, 3>& corners, const Image& texture, const Recti& clip) {

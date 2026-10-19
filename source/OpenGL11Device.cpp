@@ -74,7 +74,7 @@ void OpenGL11Device::drawSprites(GeometryHandle geometry, std::span<const Sprite
 	}
 	const OpenGL11Functions& gl = this->gl;
 	const Recti viewport = this->getViewport();
-	const bool stack = this->space == OpenGLSpace::MatrixStack;
+	const bool stack = this->space == SpriteSpace::MatrixStack;
 	const Matrix4f placement = Matrix4f::fromAffine(this->placement);
 
 	if (this->restoreState) {
@@ -94,7 +94,7 @@ void OpenGL11Device::drawSprites(GeometryHandle geometry, std::span<const Sprite
 		if (this->restoreState) {
 			gl.glPushMatrix();
 		}
-		if (this->space == OpenGLSpace::Matrix) {
+		if (this->space == SpriteSpace::Matrix) {
 			gl.glLoadMatrixf(this->matrix.getData());
 		}
 		else {
@@ -193,7 +193,7 @@ void OpenGL11Device::release() {
 }
 
 void OpenGL11Device::useMatrixStack() {
-	this->space = OpenGLSpace::MatrixStack;
+	this->space = SpriteSpace::MatrixStack;
 }
 
 const OpenGLFunctions* OpenGL11Device::getFunctions() const {

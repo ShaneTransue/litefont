@@ -68,71 +68,6 @@ Image OpenGLDevice::readPixels() const {
 	return frame;
 }
 
-void OpenGLDevice::useViewport() {
-	this->space = OpenGLSpace::Viewport;
-}
-
-void OpenGLDevice::setMatrix(const Matrix4f& matrix) {
-	this->matrix = matrix;
-	this->space = OpenGLSpace::Matrix;
-}
-
-OpenGLSpace OpenGLDevice::getSpace() const {
-	return this->space;
-}
-
-const Matrix4f& OpenGLDevice::getMatrix() const {
-	return this->matrix;
-}
-
-void OpenGLDevice::setYUp(bool yUp) {
-	this->yUp = yUp;
-}
-
-bool OpenGLDevice::isYUp() const {
-	return this->yUp;
-}
-
-void OpenGLDevice::setPlacement(const Affine2f& placement) {
-	this->placement = placement;
-}
-
-const Affine2f& OpenGLDevice::getPlacement() const {
-	return this->placement;
-}
-
-float OpenGLDevice::getPixelScale(Vector2f point) const {
-	// The longer of the two axes a unit square at the point becomes in window
-	// pixels, from the derivative of the projection there (perspective too).
-	if (this->space == OpenGLSpace::Viewport || this->getFunctions() == nullptr) {
-		return 1.0f;
-	}
-	Matrix4f transform = this->matrix;
-	if (this->space == OpenGLSpace::MatrixStack && !this->getStackMatrix(transform)) {
-		return 1.0f;
-	}
-	const Recti viewport = this->getViewport();
-	const std::array<float, 16>& m = transform.values;
-	const double x = point.x;
-	const double y = point.y;
-	const double clipX = m[0] * x + m[4] * y + m[12];
-	const double clipY = m[1] * x + m[5] * y + m[13];
-	const double clipW = m[3] * x + m[7] * y + m[15];
-	if (!(clipW > 1e-9)) {
-		return 1.0f;
-	}
-	double longest = 0.0;
-	for (std::size_t column = 0; column < 2; column++) {
-		const double dx = m[column * 4 + 0];
-		const double dy = m[column * 4 + 1];
-		const double dw = m[column * 4 + 3];
-		const double windowX = (dx * clipW - clipX * dw) / (clipW * clipW) * 0.5 * viewport.width;
-		const double windowY = (dy * clipW - clipY * dw) / (clipW * clipW) * 0.5 * viewport.height;
-		longest = std::max(longest, std::sqrt(windowX * windowX + windowY * windowY));
-	}
-	return std::isfinite(longest) && longest > 0.0 ? static_cast<float>(longest) : 1.0f;
-}
-
 void OpenGLDevice::setRestoreState(bool restore) {
 	this->restoreState = restore;
 }
@@ -157,10 +92,6 @@ void OpenGLDevice::release() {
 	this->geometries.clear();
 }
 
-bool OpenGLDevice::getStackMatrix(Matrix4f&) const {
-	return false;
-}
-
 Recti OpenGLDevice::getViewport() const {
 	std::int32_t viewport[4] = {0, 0, 0, 0};
 	const OpenGLFunctions* gl = this->getFunctions();
@@ -173,7 +104,7 @@ Recti OpenGLDevice::getViewport() const {
 std::uint32_t OpenGLDevice::getFilter() const {
 	// Nearest on the pixel grid, where texels map one to one; linear under a
 	// matrix, where they do not.
-	return this->space == OpenGLSpace::Viewport ? OpenGLFunctions::NEAREST : OpenGLFunctions::LINEAR;
+	return this->space == SpriteSpace::Viewport ? OpenGLFunctions::NEAREST : OpenGLFunctions::LINEAR;
 }
 
 }

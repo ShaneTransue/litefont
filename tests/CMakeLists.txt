@@ -42,7 +42,8 @@ add_executable(litefont_tests
 	TextLayoutTests.cpp
 	TextCursorTests.cpp
 	GlyphRasterizerTests.cpp
-	TextRendererTests.cpp)
+	TextRendererTests.cpp
+	TextPainterTests.cpp)
 target_link_libraries(litefont_tests PRIVATE litefont::litefont)
 litefont_compile_options(litefont_tests)
 

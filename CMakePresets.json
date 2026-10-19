@@ -1,0 +1,86 @@
+{
+	"version": 3,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 21,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "default",
+			"displayName": "Default",
+			"description": "The library, tests and examples in build/ (the freeglut example only when GLUT is found)",
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"LITEFONT_BUILD_EXAMPLES": "ON"
+			}
+		},
+		{
+			"name": "vcpkg",
+			"inherits": "default",
+			"displayName": "Default with vcpkg",
+			"description": "As default, with packages (freeglut) from the vcpkg in the VCPKG_ROOT environment variable",
+			"cacheVariables": {
+				"CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+			}
+		},
+		{
+			"name": "asan",
+			"inherits": "default",
+			"displayName": "AddressSanitizer",
+			"description": "The library, tests and examples built with AddressSanitizer, in build-asan/",
+			"binaryDir": "${sourceDir}/build-asan",
+			"cacheVariables": {
+				"LITEFONT_SANITIZE": "ON"
+			}
+		}
+	],
+	"buildPresets": [
+		{
+			"name": "release",
+			"displayName": "Release",
+			"description": "Builds everything in Release and assembles build/bin_release",
+			"configurePreset": "default",
+			"configuration": "Release",
+			"targets": ["dist"]
+		},
+		{
+			"name": "debug",
+			"displayName": "Debug",
+			"configurePreset": "default",
+			"configuration": "Debug"
+		},
+		{
+			"name": "vcpkg-release",
+			"displayName": "Release with vcpkg",
+			"description": "As release, for the vcpkg configuration",
+			"configurePreset": "vcpkg",
+			"configuration": "Release",
+			"targets": ["dist"]
+		},
+		{
+			"name": "asan",
+			"displayName": "AddressSanitizer",
+			"configurePreset": "asan",
+			"configuration": "Release"
+		}
+	],
+	"testPresets": [
+		{
+			"name": "release",
+			"configurePreset": "default",
+			"configuration": "Release",
+			"output": {
+				"outputOnFailure": true
+			}
+		},
+		{
+			"name": "vcpkg-release",
+			"configurePreset": "vcpkg",
+			"configuration": "Release",
+			"output": {
+				"outputOnFailure": true
+			}
+		}
+	]
+}

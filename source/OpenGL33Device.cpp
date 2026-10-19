@@ -216,9 +216,7 @@ void OpenGL33Device::drawSprites(GeometryHandle geometry, std::span<const Sprite
 
 	// Pixels from the viewport's top-left corner with y down, or the program's
 	// matrix, after the placement.
-	const Matrix4f space = this->space == OpenGLSpace::Matrix ? this->matrix
-		: Matrix4f::ortho(0.0f, static_cast<float>(viewport.width), static_cast<float>(viewport.height), 0.0f, -1.0f, 1.0f);
-	const Matrix4f transform = space * Matrix4f::fromAffine(this->placement);
+	const Matrix4f transform = this->getSpriteTransform(viewport);
 	gl.glUniformMatrix4fv(this->transformLocation, 1, 0, transform.getData());
 
 	// Coverage times the vertex color, blended with straight alpha.

@@ -1,28 +1,12 @@
 #pragma once
 
-#include <litefont/Affine2.h>
 #include <litefont/GraphicsDevice.h>
-#include <litefont/Matrix4.h>
 #include <litefont/OpenGLFunctions.h>
 
 #include <cstdint>
 #include <vector>
 
 namespace litefont {
-
-/**
- * @addtogroup Graphics
- *
- * OpenGLSpace - Where an OpenGLDevice draws sprites: in pixels from the
- * top-left corner of the viewport (crisp, on whole pixels), through a matrix
- * the program gives (setMatrix), or through the program's own OpenGL matrix
- * stack (OpenGL11Device::useMatrixStack, compatibility contexts only).
- */
-enum class OpenGLSpace : std::uint8_t {
-	Viewport,
-	Matrix,
-	MatrixStack
-};
 
 /**
  * @addtogroup Graphics
@@ -75,24 +59,12 @@ struct OpenGLGeometry {
  * @addtogroup Graphics
  *
  * OpenGLDevice - What the OpenGL devices share. A program creates the one
- * that matches its context and passes it on as an OpenGLDevice:
- * OpenGL11Device for compatibility contexts of any version (next to glBegin
- * and glEnd code), OpenGL33Device for core or compatibility contexts of
- * version 3.3 or newer. Either finds its OpenGL functions itself at the
- * first draw (see OpenGLFunctions), so no loader is needed.
- *
- * Sprites are drawn in one of three spaces (OpenGLSpace). The default is
- * pixels from the viewport's top-left corner, y down, on whole pixels. After
- * setMatrix(), sprites go through that matrix instead (column-major, the
- * product of projection and model-view, the way a shader would take it), and
- * OpenGL11Device can use the program's own matrix stack. In those two spaces
- * the device draws in the units of the matrix, with linear filtering; the
- * placement (setPlacement) maps sprite coordinates into those units, which
- * is how OpenGLRenderer sizes and places text in them. With y up (the
- * default, as glOrtho(0, w, 0, h) and world coordinates have it), text grows
- * downward from its position toward smaller y; setYUp(false) is for spaces
- * with y down. getPixelScale() says how many window pixels one unit covers
- * at a point, so text can be rendered at the size it shows.
+ * that matches its context: OpenGL11Device for compatibility contexts of any
+ * version (next to glBegin and glEnd code), OpenGL33Device for core or
+ * compatibility contexts of version 3.3 or newer. Either finds its OpenGL
+ * functions itself at the first draw (see OpenGLFunctions), so no loader is
+ * needed. Under a matrix (GraphicsDevice::setMatrix, or the 1.1 device's
+ * matrix stack) textures are filtered linearly; on the pixel grid, nearest.
  *
  * Drawing sets what text needs and, by default, saves the program's state
  * first and restores it afterwards; setRestoreState(false) skips that. Each
@@ -114,35 +86,20 @@ public:
 	void beginFrame(Size2i target, Color4f clear) override;
 	void endFrame() override;
 	Image readPixels() const override;
-
-	void useViewport();
-	void setMatrix(const Matrix4f& matrix);
-	OpenGLSpace getSpace() const;
-	const Matrix4f& getMatrix() const;
-	void setYUp(bool yUp);
-	bool isYUp() const;
-	void setPlacement(const Affine2f& placement);
-	const Affine2f& getPlacement() const;
-	float getPixelScale(Vector2f point) const;
+	Recti getViewport() const override;
+	void release() override;
 
 	void setRestoreState(bool restore);
 	bool isRestoringState() const;
 	OpenGLError getError() const;
-	virtual void release();
 
 protected:
 	virtual const OpenGLFunctions* getFunctions() const = 0;
-	virtual bool getStackMatrix(Matrix4f& matrix) const;
 
-	Recti getViewport() const;
 	std::uint32_t getFilter() const;
 
 	std::vector<OpenGLTexture> textures;
 	std::vector<OpenGLGeometry> geometries;
-	Matrix4f matrix;
-	Affine2f placement;
-	OpenGLSpace space = OpenGLSpace::Viewport;
-	bool yUp = true;
 	bool restoreState = true;
 	mutable OpenGLError error = OpenGLError::None;
 };

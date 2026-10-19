@@ -62,6 +62,10 @@ Image RecordingDevice::readPixels() const {
 	return this->inner != nullptr ? this->inner->readPixels() : Image();
 }
 
+Recti RecordingDevice::getViewport() const {
+	return this->inner != nullptr ? this->inner->getViewport() : Recti{};
+}
+
 const DeviceCallCounts& RecordingDevice::getCounts() const {
 	return this->counts;
 }
