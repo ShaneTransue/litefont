@@ -1,10 +1,11 @@
-# Three examples: rasterize renders text to an image file on the CPU; the
+# The examples: rasterize renders text to an image file on the CPU; the
 # freeglut example draws text in an old-style OpenGL program (or, with --core,
 # in an OpenGL 3.3 core profile context); the Direct3D 11 example draws the
-# same scene in a plain Win32 program. The freeglut example is built only when
-# GLUT is found (freeglut through vcpkg, a system package or a framework), and
-# the Direct3D 11 one only on Windows. The two windowed examples share the
-# scene they draw (shared/ExampleScene).
+# same scene in a plain Win32 program; hello_glut and hello_d3d11 are the
+# smallest programs that draw "Hello world" with each. The freeglut ones are
+# built only when GLUT is found (freeglut through vcpkg, a system package or a
+# framework), and the Direct3D 11 ones only on Windows. The two full examples
+# share the scene they draw (shared/ExampleScene).
 #
 # The fonts in LITEFONT_EXAMPLE_FONTS (examples/fonts, open-source Noto fonts,
 # by default) are copied next to the windowed examples as fonts/, so they run
@@ -38,6 +39,16 @@ if(GLUT_FOUND AND LITEFONT_OPENGL)
 		target_compile_definitions(litefont_freeglut PRIVATE NOMINMAX)
 	endif()
 	list(APPEND examples litefont_freeglut)
+
+	# The smallest OpenGL program: Hello world.
+	add_executable(litefont_hello_glut hello_glut/main.cpp)
+	target_link_libraries(litefont_hello_glut PRIVATE litefont::litefont GLUT::GLUT OpenGL::GL)
+	litefont_compile_options(litefont_hello_glut)
+	litefont_copy_example_fonts(litefont_hello_glut)
+	if(WIN32)
+		target_compile_definitions(litefont_hello_glut PRIVATE NOMINMAX)
+	endif()
+	list(APPEND examples litefont_hello_glut)
 else()
 	message(STATUS "litefont: GLUT not found, so the freeglut example is not built")
 endif()
@@ -49,6 +60,13 @@ if(LITEFONT_D3D11)
 	litefont_compile_options(litefont_d3d11)
 	litefont_copy_example_fonts(litefont_d3d11)
 	list(APPEND examples litefont_d3d11)
+
+	# The smallest Direct3D 11 program: Hello world.
+	add_executable(litefont_hello_d3d11 hello_d3d11/main.cpp)
+	target_link_libraries(litefont_hello_d3d11 PRIVATE litefont::litefont d3d11)
+	litefont_compile_options(litefont_hello_d3d11)
+	litefont_copy_example_fonts(litefont_hello_d3d11)
+	list(APPEND examples litefont_hello_d3d11)
 endif()
 
 # The examples component: the programs, the DLLs next to them (freeglut's,

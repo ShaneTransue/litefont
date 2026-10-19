@@ -110,7 +110,7 @@ void render() {
 }
 \end{lstlisting}
 
-Positions are pixels from the top-left corner of the viewport. \texttt{measureText} gives the box a string takes, for centering or right alignment, and \texttt{setScale} sets the device pixels per pixel on high-density screens. The same painter also draws on the CPU: with a \texttt{SoftwareDevice}, the program calls \texttt{beginFrame} with a size and a clear color before drawing, and \texttt{readPixels} afterwards to take the image.
+Positions are pixels from the top-left corner of the viewport. \texttt{measureText} gives the box a string takes, for centering or right alignment, and \texttt{setScale} sets the device pixels per pixel on high-density screens. The same painter also draws on the CPU: with a \texttt{SoftwareDevice}, the program calls \texttt{beginFrame} with a size and a clear color before drawing, and \texttt{readPixels} afterwards to take the image. The smallest complete programs, a window that says ``Hello world'', are \texttt{examples/hello\_glut} and \texttt{examples/hello\_d3d11}.
 
 \section{How it works}
 

@@ -305,6 +305,8 @@ The presets build the examples (`LITEFONT_BUILD_EXAMPLES`). Pass any `.ttf`, `.o
 
 | Example | Run |
 |---|---|
+| `examples/hello_glut`: the smallest OpenGL program, "Hello world" in a freeglut window in about 50 lines, with no classes: `init`, `display`, `resize` and `main` | `litefont_hello_glut [font.ttf]` |
+| `examples/hello_d3d11`: the smallest Direct3D 11 program, "Hello world" in a plain Win32 window | `litefont_hello_d3d11 [font.ttf]` |
 | `examples/freeglut`: a triangle drawn with `glBegin`, text on top, and a label that follows a moving point | `litefont_freeglut [font.ttf] [mono.ttf]` |
 | the same scene in an OpenGL 3.3 core profile context, through `OpenGL33Device` | `litefont_freeglut <font.ttf> --core` |
 | `examples/d3d11`: the same scene in a plain Win32 program, through `D3D11Device`, with the triangle drawn by the program's own shaders | `litefont_d3d11 [font.ttf] [mono.ttf]` |
